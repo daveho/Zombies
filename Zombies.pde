@@ -219,6 +219,32 @@ class MinDistanceFromHealthyPerson implements Function<Point,Float> {
   }
 }
 
+class Work {
+  int start, end;
+}
+
+private java.util.concurrent.LinkedBlockingQueue<Work> workQ =
+  new java.util.concurrent.LinkedBlockingQueue<Work>();
+
+class Worker implements Runnable {
+  public void run() {
+    try {
+      while (true) {
+        Work work = workQ.take();
+        for (int i = work.start; i < work.end; i++) {
+          if (persons[i].sick) {
+            simulateZombie(i);
+          } else {
+            simulatePerson(i);
+          }
+        }
+      }
+    } catch (InterruptedException e) {
+      println("Interrupted!");
+    }
+  }
+}
+
 Person[] persons = new Person[NUM_PERSONS];
 Person[] nextGen = new Person[NUM_PERSONS];
 
@@ -312,43 +338,56 @@ int[] computeStats() {
 // Do computations for one time step of the simulation
 void simulate() {
   for (int i = 0; i < NUM_PERSONS; i++) {
+    Person p;
     if (persons[i].sick) {
-      simulateZombie(i);
+      p = simulateZombie(i);
     } else {
-      simulatePerson(i);
+      p = simulatePerson(i);
     }
+    nextGen[i] = p;
   }
+  
+  // flip arrays
+  Person[] t = persons;
+  persons = nextGen;
+  nextGen = persons;
 }
 
-void simulateZombie(int i) {
+Person simulateZombie(int i) {
+  Person clone = persons[i].dup();
+  
   // Check whether any victims are within agression radius
-  CloseToHealthyPerson pred = new CloseToHealthyPerson(persons[i]);
+  CloseToHealthyPerson pred = new CloseToHealthyPerson(clone);
   Person[] victims = take(i, pred);
   
   Point next;
   if (victims.length > 0) {
     // pursue!
     Point[] randMoves = computeRandomMoves(i, ZOMBIE_MOVE_DIST);
-    next = moveTowards(randMoves, persons[i], victims);
+    next = moveTowards(randMoves, clone, victims);
   } else {
     // normal random move
     float moveDist = NORMAL_MOVE_DIST;
 
     // No sick persons in paranoia raduis: move randomly
     Point[] randMoves = computeRandomMoves(i, moveDist);
-    next = pickMove(persons[i], randMoves);
+    next = pickMove(clone, randMoves);
   }
-  persons[i].moveTo(next);
+  clone.moveTo(next);
   
   // check for spontaneous recovery
   if (random(1) < RECOVERY) {
-    persons[i].sick = false;
+    clone.sick = false;
   }
+  
+  return clone;
 }
 
-void simulatePerson(int i) {
+Person simulatePerson(int i) {
+  Person clone = persons[i].dup();
+  
   // Find out if there are any infected persons within PARANOIA radius
-  CloseToSickPerson pred = new CloseToSickPerson(persons[i]);
+  CloseToSickPerson pred = new CloseToSickPerson(clone);
   Person[] infected = take(i, pred);
   
   // Compute a next move
@@ -362,23 +401,25 @@ void simulatePerson(int i) {
     // Compute random moves, pick the one that maximizes the
     // minimim distance to an infected person
     Point[] randMoves = computeRandomMoves(i, moveDist);
-    next = moveAway(randMoves, persons[i], infected);
+    next = moveAway(randMoves, clone, infected);
   } else {
     float moveDist = NORMAL_MOVE_DIST;
 
     // No sick persons in paranoia raduis: move randomly
     Point[] randMoves = computeRandomMoves(i, moveDist);
-    next = pickMove(persons[i], randMoves);
+    next = pickMove(clone, randMoves);
   }
-  persons[i].moveTo(next);
+  clone.moveTo(next);
   
   // Check for spontaneous sickness
   // or infection spread from a sick person
   if (random(1) < SPONTANEOUS_INFECT) {
-    persons[i].sick = true;
+    clone.sick = true;
   } else if (pred.getMinDist() < INFECT_RADIUS && random(1) < INFECT) {
-    persons[i].sick = true;
+    clone.sick = true;
   }
+  
+  return clone;
 }
 
 Person[] take(int ignore, Predicate<Person> pred) {
