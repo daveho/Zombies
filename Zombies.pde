@@ -20,7 +20,7 @@ final float INFECT_RADIUS = 10.0;
 final float INFECT = 0.80;
 
 // probability that a sick person recovers
-final float RECOVERY = 0; //0.001;
+final float RECOVERY = 0;
 
 final int WIDTH = 480;//600;
 final int HEIGHT = 480;//600;
