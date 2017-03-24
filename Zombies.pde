@@ -7,6 +7,21 @@ import java.util.function.Predicate;
 // Simulation parameters
 /////////////////////////////////////////////////////////////////////////////
 
+// distance to move when trying to escape from sick persons
+final float ESCAPE_MOVE_DIST = 5.0;
+
+// distance that sick person (zombie) can move
+final float ZOMBIE_MOVE_DIST = 3.5;
+
+// Radius within which a sick person could infect a healthy person
+final float INFECT_RADIUS = 10.0;
+
+// Probability of being infected by a sick person within INFECT_RADIUS
+final float INFECT = 0.80;
+
+// probability that a sick person recovers
+final float RECOVERY = 0; //0.001;
+
 final int WIDTH = 480;//600;
 final int HEIGHT = 480;//600;
 final int NUM_PERSONS = 1000;
@@ -21,12 +36,6 @@ final float PARANOIA = 160.0;
 // normal move distance (when not trying to escape from sick persons)
 final float NORMAL_MOVE_DIST = 3.0;
 
-// distance to move when trying to escape from sick persons
-final float ESCAPE_MOVE_DIST = 15.0;
-
-// distance that sick person (zombie) can move
-final float ZOMBIE_MOVE_DIST = 3.5;
-
 // generate this many random moves when deciding how a person
 // should move (normally, to escape disease, or to pursue normals)
 final int NUM_MOVES = 6;
@@ -34,17 +43,8 @@ final int NUM_MOVES = 6;
 // probability that a person is sick initially
 final float INIT_SICK = 0.01;
 
-// probability that a sick person recovers
-final float RECOVERY = 0; //0.001;
-
 // Probability that a healthy person becomes sick spontaneously
 final float SPONTANEOUS_INFECT = 0; // 0.00001;
-
-// Radius within which a sick person could infect a healthy person
-final float INFECT_RADIUS = 8.0;
-
-// Probability of being infected by a sick person within INFECT_RADIUS
-final float INFECT = 0.10;
 
 // Radius within which zombie will pursue victim
 final float AGRESSION_RADIUS = 300;
