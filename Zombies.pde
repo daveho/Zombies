@@ -223,7 +223,9 @@ class Work {
   int start, end;
 }
 
-private java.util.concurrent.LinkedBlockingQueue<Work> workQ =
+java.util.concurrent.LinkedBlockingQueue<Work> workQ =
+  new java.util.concurrent.LinkedBlockingQueue<Work>();
+java.util.concurrent.LinkedBlockingQueue<Work> doneQ =
   new java.util.concurrent.LinkedBlockingQueue<Work>();
 
 class Worker implements Runnable {
@@ -231,13 +233,18 @@ class Worker implements Runnable {
     try {
       while (true) {
         Work work = workQ.take();
+        if (work.start < 0) { return; }
+        //System.out.printf("Simulating %d..%d\n", work.start, work.end);
         for (int i = work.start; i < work.end; i++) {
+          Person p;
           if (persons[i].sick) {
-            simulateZombie(i);
+            p = simulateZombie(i);
           } else {
-            simulatePerson(i);
+            p = simulatePerson(i);
           }
+          nextGen[i] = p;
         }
+        doneQ.put(work);
       }
     } catch (InterruptedException e) {
       println("Interrupted!");
@@ -245,10 +252,14 @@ class Worker implements Runnable {
   }
 }
 
+Thread[] threads = new Thread[Runtime.getRuntime().availableProcessors()];
+
 Person[] persons = new Person[NUM_PERSONS];
 Person[] nextGen = new Person[NUM_PERSONS];
 
 PFont myFont;
+
+final boolean PARALLEL = true;
 
 void setup() {
   size(480,480);
@@ -275,6 +286,13 @@ void setup() {
     persons[i] = p;
     if (random(1) < INIT_SICK) {
       p.sick = true;
+    }
+  }
+
+  if (PARALLEL) {
+    for (int i = 0; i < threads.length; i++) {
+      threads[i] = new Thread(new Worker());
+      threads[i].start();
     }
   }
 
@@ -337,20 +355,48 @@ int[] computeStats() {
 
 // Do computations for one time step of the simulation
 void simulate() {
-  for (int i = 0; i < NUM_PERSONS; i++) {
-    Person p;
-    if (persons[i].sick) {
-      p = simulateZombie(i);
-    } else {
-      p = simulatePerson(i);
+  try {
+    doSimulate();
+  } catch (InterruptedException e) {
+    // ignore
+  }
+}
+
+void doSimulate() throws InterruptedException {
+  if (!PARALLEL) {
+    for (int i = 0; i < NUM_PERSONS; i++) {
+      Person p;
+      if (persons[i].sick) {
+        p = simulateZombie(i);
+      } else {
+        p = simulatePerson(i);
+      }
+      nextGen[i] = p;
     }
-    nextGen[i] = p;
+  } else {
+    // Send work to worker threads
+    int numChunks = threads.length * 4;
+    int chunkSize = persons.length / numChunks;
+    for (int i = 0; i < numChunks; i++) {
+      Work work = new Work();
+      work.start = i*chunkSize;
+      work.end = work.start + chunkSize;
+      if (i == numChunks - 1) { work.end += persons.length % chunkSize; }
+      workQ.put(work);
+    }
+
+    // Wait for work to be complete
+    for (int i = 0; i < numChunks; i++) {
+      doneQ.take();
+      //println("Received notification");
+    }
+    //println("All workers done");
   }
   
   // flip arrays
   Person[] t = persons;
   persons = nextGen;
-  nextGen = persons;
+  nextGen = t;
 }
 
 Person simulateZombie(int i) {
