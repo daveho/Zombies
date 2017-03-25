@@ -261,6 +261,8 @@ PFont myFont;
 
 final boolean PARALLEL = true;
 
+final int FPS = 10;
+
 void setup() {
   size(480,480);
 
@@ -296,7 +298,7 @@ void setup() {
     }
   }
 
-  frameRate(10);
+  frameRate(FPS);
   //noLoop();
 }
 
@@ -305,6 +307,8 @@ void keyPressed() {
     paused = !paused;
   }
 }
+
+int ticks = 0;
 
 void draw() {
   background(225);
@@ -335,11 +339,19 @@ void draw() {
   // Print stats
   int[] stats = computeStats();
   textFont(myFont);
-  fill(64, 64, 150, 128);
-  text("Zombies: " + String.format("%.1f%%", ((float)stats[0]/persons.length)*100.0f), 180, 400);
+  fill(64, 64, 170, 128);
+  text("Zombies: " + String.format("%5.1f%%", ((float)stats[0]/persons.length)*100.0f), 190, 400);
+  
+  // Print time
+  int sec = ticks / (FPS);
+  int frac = ((ticks % (FPS)) * 100) / FPS;
+  String time = String.format("%3d.%02d", sec, frac);
+  text(time, 20, 400);
   
   if (paused) {
-    text("Paused", 350, 560);
+    text("Paused", 190, 240);
+  } else {
+    ticks++;
   }
 }
 
